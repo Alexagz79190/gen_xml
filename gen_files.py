@@ -73,12 +73,12 @@ def create_xml(data, agence, suffix):
 st.title("Générateur de fichiers XML")
 
 # Charger les fichiers
-infos = pd.read_excel('infos.xlsx', header=0, names=['donnee', 'valeur'])  # Inclure toutes les lignes, y compris la première
+infos = load_file("Charger le fichier infos (XLSX)", "xlsx", header=0)  # Inclure toutes les lignes, y compris la première
 if infos is not None:
     if 'donnee' not in infos.columns or 'valeur' not in infos.columns:
         st.error("Les colonnes 'donnee' et 'valeur' sont absentes du fichier infos.")
         infos = None
-purchase = pd.read_excel('purchase.xlsx', header=22)  # Ligne d'en-tête à adapter
+purchase = load_file("Charger le fichier purchase (XLSX)", "xlsx", header=22)  # Ligne d'en-tête à adapter
 stock = load_file("Charger le fichier stock (CSV)", "csv")
 tarif = load_file("Charger le fichier tarif (TXT)", "txt")
 
