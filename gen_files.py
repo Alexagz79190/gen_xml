@@ -4,13 +4,14 @@ import streamlit as st
 from io import BytesIO
 
 # Fonction pour charger les fichiers via Streamlit
-def load_file(label, file_type):
+def load_file(label, file_type, header=None):
     uploaded_file = st.file_uploader(label, type=file_type)
+    header_option = header if header is not None else 0
     if uploaded_file is not None:
         if file_type == "csv":
             return pd.read_csv(uploaded_file, sep=';', dtype={'Fournisseur': str, 'Référence Frn': str}, encoding='latin1')
         elif file_type == "xlsx":
-            return pd.read_excel(uploaded_file, header=22)
+            return pd.read_excel(uploaded_file, header=header_option)
         elif file_type == "txt":
             colspecs = [(0, 10), (10, 20), (20, 30), (30, 36), (36, 44), (44, 69), (69, 84), (84, 94), (94, 102), 
                         (102, 105), (105, 109), (109, 115), (115, 119), (119, 134)]
