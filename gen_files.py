@@ -91,6 +91,7 @@ def create_xml(data, agence, suffix):
     ET.SubElement(adrlivr, "emaillivr").text = get_info('emaillivr', '')
     ET.SubElement(adrlivr, "nomadrlivr").text = get_info('nomadrlivr', '')
     ET.SubElement(adrlivr, "adr1livr").text = get_info('adr1livr', '')
+    ET.SubElement(adrlivr, "adr2livr").text = get_info('adr2livr', '')
     ET.SubElement(adrlivr, "payslivr").text = get_info('payslivr', '')
     ET.SubElement(adrlivr, "villelivr").text = get_info('villelivr', '')
     ET.SubElement(adrlivr, "cplivr").text = get_info('cplivr', '')
