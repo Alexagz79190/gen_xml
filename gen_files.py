@@ -95,11 +95,14 @@ if infos is not None and purchase is not None and stock is not None and tarif is
 
         # Bouton pour générer les XML
         if st.button("Générer les fichiers XML"):
+            # Générer les fichiers XML
+            st.session_state["xml_00"] = create_xml(agence_00, "00", "KUH1")
+            st.session_state["xml_A1"] = create_xml(agence_A1, "A1", "KUH2")
             xml_00 = create_xml(agence_00, "00", "KUH1")
             xml_A1 = create_xml(agence_A1, "A1", "KUH2")
 
             # Téléchargement des fichiers
-            st.download_button("Télécharger agence_00.xml", data=xml_00, file_name="agence_00.xml", mime="application/xml")
-            st.download_button("Télécharger agence_A1.xml", data=xml_A1, file_name="agence_A1.xml", mime="application/xml")
+            st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
+            st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
 else:
     st.warning("Veuillez charger tous les fichiers nécessaires.")
