@@ -13,9 +13,9 @@ def load_file(label, file_type, header=None):
         elif file_type == "xlsx":
             return pd.read_excel(uploaded_file, header=header_option)
         elif file_type == "txt":
-            colspecs = [(0, 10), (10, 20), (20, 30), (30, 36), (36, 44), (44, 69), (69, 84), (84, 94), (94, 102), 
+            colspecs = [(0, 10), (10, 20), (20, 30), (30, 36), (36, 44), (44, 69), (69, 84), (84, 94), (94, 102),
                         (102, 105), (105, 109), (109, 115), (115, 119), (119, 134)]
-            columns = ['Monnaie', 'Article', 'Prix', 'Remise', 'Date', 'Designation', 'Code EAN', 'Poids', 
+            columns = ['Monnaie', 'Article', 'Prix', 'Remise', 'Date', 'Designation', 'Code EAN', 'Poids',
                        'Societe', 'PDR', 'Qte', 'Cond', 'VoirLP', 'HS Code']
             return pd.read_fwf(uploaded_file, colspecs=colspecs, names=columns, encoding='latin1')
     return None
@@ -102,11 +102,8 @@ if infos is not None and purchase is not None and stock is not None and tarif is
 
     # Afficher les boutons de téléchargement si les fichiers sont prêts
     if "xml_00" in st.session_state and "xml_A1" in st.session_state:
-    # Téléchargement des fichiers
-    st.header("Téléchargement des fichiers")
-    st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
-    st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
-                    st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
-                                st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
+        st.header("Téléchargement des fichiers")
+        st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
+        st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
 else:
     st.warning("Veuillez charger tous les fichiers nécessaires.")
