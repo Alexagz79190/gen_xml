@@ -75,8 +75,9 @@ st.title("Générateur de fichiers XML")
 infos = load_file("Charger le fichier infos (XLSX)", "xlsx")
 purchase = load_file("Charger le fichier purchase (XLSX)", "xlsx")
 stock = load_file("Charger le fichier stock (CSV)", "csv")
+tarif = load_file("Charger le fichier tarif (TXT)", "txt")
 
-if infos is not None and purchase is not None and stock is not None:
+if infos is not None and purchase is not None and stock is not None and tarif is not None:
     st.success("Fichiers chargés avec succès.")
 
     # Diviser les données
