@@ -80,17 +80,21 @@ tarif = load_file("Charger le fichier tarif (TXT)", "txt")
 if infos is not None and purchase is not None and stock is not None and tarif is not None:
     st.success("Fichiers chargés avec succès.")
 
-    # Diviser les données
-    agence_00 = purchase[purchase['Product Number'].isin(stock['Référence Frn'])]
-    agence_A1 = purchase[~purchase['Product Number'].isin(stock['Référence Frn'])]
+    # Vérifier les colonnes nécessaires
+    if 'Product Number' not in purchase.columns or 'Référence Frn' not in stock.columns:
+        st.error("Les colonnes nécessaires ('Product Number', 'Référence Frn') sont absentes des fichiers chargés.")
+    else:
+        # Diviser les données
+        agence_00 = purchase[purchase['Product Number'].isin(stock['Référence Frn'])]
+        agence_A1 = purchase[~purchase['Product Number'].isin(stock['Référence Frn'])]
 
-    # Bouton pour générer les XML
-    if st.button("Générer les fichiers XML"):
-        xml_00 = create_xml(agence_00, "00", "KUH1")
-        xml_A1 = create_xml(agence_A1, "A1", "KUH2")
+        # Bouton pour générer les XML
+        if st.button("Générer les fichiers XML"):
+            xml_00 = create_xml(agence_00, "00", "KUH1")
+            xml_A1 = create_xml(agence_A1, "A1", "KUH2")
 
-        # Téléchargement des fichiers
-        st.download_button("Télécharger agence_00.xml", data=xml_00, file_name="agence_00.xml", mime="application/xml")
-        st.download_button("Télécharger agence_A1.xml", data=xml_A1, file_name="agence_A1.xml", mime="application/xml")
+            # Téléchargement des fichiers
+            st.download_button("Télécharger agence_00.xml", data=xml_00, file_name="agence_00.xml", mime="application/xml")
+            st.download_button("Télécharger agence_A1.xml", data=xml_A1, file_name="agence_A1.xml", mime="application/xml")
 else:
     st.warning("Veuillez charger tous les fichiers nécessaires.")
