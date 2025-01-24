@@ -10,7 +10,7 @@ def load_file(label, file_type):
         if file_type == "csv":
             return pd.read_csv(uploaded_file, sep=';', dtype={'Fournisseur': str, 'Référence Frn': str}, encoding='latin1')
         elif file_type == "xlsx":
-            return pd.read_excel(uploaded_file, header=0)
+            return pd.read_excel(uploaded_file, header=22)
         elif file_type == "txt":
             colspecs = [(0, 10), (10, 20), (20, 30), (30, 36), (36, 44), (44, 69), (69, 84), (84, 94), (94, 102), 
                         (102, 105), (105, 109), (109, 115), (115, 119), (119, 134)]
