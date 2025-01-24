@@ -102,8 +102,10 @@ if infos is not None and purchase is not None and stock is not None and tarif is
 
     # Afficher les boutons de téléchargement si les fichiers sont prêts
     if "xml_00" in st.session_state and "xml_A1" in st.session_state:
-        # Téléchargement des fichiers
-        st.header("Téléchargement des fichiers")
+    # Téléchargement des fichiers
+    st.header("Téléchargement des fichiers")
+    st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
+    st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
                     st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
                                 st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
 else:
