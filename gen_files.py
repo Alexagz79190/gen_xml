@@ -73,6 +73,10 @@ st.title("Générateur de fichiers XML")
 
 # Charger les fichiers
 infos = load_file("Charger le fichier infos (XLSX)", "xlsx")
+if infos is not None:
+    if 'donnee' not in infos.columns or 'valeur' not in infos.columns:
+        st.error("Les colonnes 'donnee' et 'valeur' sont absentes du fichier infos.")
+        infos = None
 purchase = load_file("Charger le fichier purchase (XLSX)", "xlsx")
 stock = load_file("Charger le fichier stock (CSV)", "csv")
 tarif = load_file("Charger le fichier tarif (TXT)", "txt")
