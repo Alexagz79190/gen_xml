@@ -10,7 +10,7 @@ def load_file(label, file_type):
         if file_type == "csv":
             return pd.read_csv(uploaded_file, sep=';', dtype={'Fournisseur': str, 'Référence Frn': str}, encoding='latin1')
         elif file_type == "xlsx":
-            return pd.read_excel(uploaded_file, header=22)
+            return pd.read_excel(uploaded_file, header=0, names=['donnee', 'valeur'])
         elif file_type == "txt":
             colspecs = [(0, 10), (10, 20), (20, 30), (30, 36), (36, 44), (44, 69), (69, 84), (84, 94), (94, 102), 
                         (102, 105), (105, 109), (109, 115), (115, 119), (119, 134)]
@@ -48,11 +48,11 @@ def create_xml(data, agence, suffix):
     # Informations de facturation
     adrfact = ET.SubElement(transaction, "adrfact")
     ET.SubElement(adrfact, "emailfact").text = ""
-    ET.SubElement(adrfact, "nomfact").text = infos.loc[infos['donnee'] == 'nomfact', 'valeur'].values[0]
-    ET.SubElement(adrfact, "adr1fact").text = infos.loc[infos['donnee'] == 'adr1fact', 'valeur'].values[0]
-    ET.SubElement(adrfact, "paysfact").text = infos.loc[infos['donnee'] == 'paysfact', 'valeur'].values[0]
-    ET.SubElement(adrfact, "villefact").text = infos.loc[infos['donnee'] == 'villefact', 'valeur'].values[0]
-    ET.SubElement(adrfact, "cpfact").text = infos.loc[infos['donnee'] == 'cpfact', 'valeur'].values[0]
+    ET.SubElement(adrfact, "nomfact").text = infos.loc[infos['donnee'] == 'nomfact', 'valeur'].values[0] if 'nomfact' in infos['donnee'].values else "Nom Facturation Inconnu"
+    ET.SubElement(adrfact, "adr1fact").text = infos.loc[infos['donnee'] == 'adr1fact', 'valeur'].values[0] if 'adr1fact' in infos['donnee'].values else ""
+    ET.SubElement(adrfact, "paysfact").text = infos.loc[infos['donnee'] == 'paysfact', 'valeur'].values[0] if 'paysfact' in infos['donnee'].values else ""
+    ET.SubElement(adrfact, "villefact").text = infos.loc[infos['donnee'] == 'villefact', 'valeur'].values[0] if 'villefact' in infos['donnee'].values else ""
+    ET.SubElement(adrfact, "cpfact").text = infos.loc[infos['donnee'] == 'cpfact', 'valeur'].values[0] if 'cpfact' in infos['donnee'].values else ""
 
     # Section lignes
     lignes = ET.SubElement(transaction, "lignes")
