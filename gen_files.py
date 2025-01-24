@@ -36,6 +36,36 @@ def indent_xml(elem, level=0):
         if level and (not elem.tail or not elem.tail.strip()):
             elem.tail = i
 
+# Fonction pour récupérer une valeur dans infos.xlsx avec une valeur par défaut
+def get_info(key, default=""):
+    value = infos.loc[infos['donnee'] == key, 'valeur']
+    return value.values[0] if not value.empty else default
+
+# Fonction pour créer une ligne XML
+def create_ligne_xml(parent, index, row):
+    ligne = ET.SubElement(parent, "ligne")
+    ET.SubElement(ligne, "NumLigtransaction").text = f"{index:05d}"
+    ET.SubElement(ligne, "refagrizone").text = f"{identifiant} {row['Product Number']}"
+    ET.SubElement(ligne, "reffour").text = row['Product Number']
+    ET.SubElement(ligne, "libelle").text = row['Product Description']
+    ET.SubElement(ligne, "qte").text = f"{row['Qty Pu']:.2f}"
+
+    # Calcul du prix d'achat
+    tarif_row = tarif[tarif['Article'] == row['Product Number']]
+    if not tarif_row.empty:
+        prix = float(tarif_row['Prix'].values[0])
+        remise_lettre = tarif_row['Remise'].values[0]
+        remise_taux = remise_mapping.get(remise_lettre, 0)
+        prixachat = round(prix * (1 - remise_taux), 2)
+    else:
+        prixachat = 0.00
+
+    ET.SubElement(ligne, "prixachat").text = f"{prixachat:.2f}"
+
+    prixventeHT = row['Pu Value'] / row['Qty Pu'] if row['Qty Pu'] != 0 else 0
+    ET.SubElement(ligne, "prixventeHT").text = f"{prixventeHT:.2f}"
+    ET.SubElement(ligne, "prixventeTTC").text = "0.00"
+
 # Fonction pour créer un fichier XML
 def create_xml(data, agence, suffix):
     transaction = ET.Element("transaction")
@@ -47,23 +77,42 @@ def create_xml(data, agence, suffix):
     ET.SubElement(entete, "agence").text = agence
 
     # Informations de facturation
-    adrfact = ET.SubElement(transaction, "adrfact")
+    adrfact = ET.SubElement(entete, "adrfact")
     ET.SubElement(adrfact, "emailfact").text = ""
-    ET.SubElement(adrfact, "nomfact").text = infos.loc[infos['donnee'] == 'nomfact', 'valeur'].values[0] if 'nomfact' in infos['donnee'].values else "Nom Facturation Inconnu"
-    ET.SubElement(adrfact, "adr1fact").text = infos.loc[infos['donnee'] == 'adr1fact', 'valeur'].values[0] if 'adr1fact' in infos['donnee'].values else ""
-    ET.SubElement(adrfact, "paysfact").text = infos.loc[infos['donnee'] == 'paysfact', 'valeur'].values[0] if 'paysfact' in infos['donnee'].values else ""
-    ET.SubElement(adrfact, "villefact").text = infos.loc[infos['donnee'] == 'villefact', 'valeur'].values[0] if 'villefact' in infos['donnee'].values else ""
-    ET.SubElement(adrfact, "cpfact").text = infos.loc[infos['donnee'] == 'cpfact', 'valeur'].values[0] if 'cpfact' in infos['donnee'].values else ""
+    ET.SubElement(adrfact, "nomfact").text = get_info('nomfact', 'Nom Facturation Inconnu')
+    ET.SubElement(adrfact, "adr1fact").text = get_info('adr1fact', '')
+    ET.SubElement(adrfact, "paysfact").text = get_info('paysfact', '')
+    ET.SubElement(adrfact, "villefact").text = get_info('villefact', '')
+    ET.SubElement(adrfact, "cpfact").text = get_info('cpfact', '')
+    ET.SubElement(adrfact, "code_client").text = get_info('code_client', '')
+
+    # Informations de livraison
+    adrlivr = ET.SubElement(entete, "adrlivr")
+    ET.SubElement(adrlivr, "emaillivr").text = get_info('emaillivr', '')
+    ET.SubElement(adrlivr, "nomadrlivr").text = get_info('nomadrlivr', '')
+    ET.SubElement(adrlivr, "adr1livr").text = get_info('adr1livr', '')
+    ET.SubElement(adrlivr, "payslivr").text = get_info('payslivr', '')
+    ET.SubElement(adrlivr, "villelivr").text = get_info('villelivr', '')
+    ET.SubElement(adrlivr, "cplivr").text = get_info('cplivr', '')
 
     # Section lignes
     lignes = ET.SubElement(transaction, "lignes")
     for index, row in data.iterrows():
-        ligne = ET.SubElement(lignes, "ligne")
-        ET.SubElement(ligne, "NumLigtransaction").text = f"{index + 1:05d}"
-        ET.SubElement(ligne, "refagrizone").text = f"Ref-{row['Product Number']}"
+        create_ligne_xml(lignes, index + 1, row)
 
-    # Indenter et convertir en bytes
+    # Pied de transaction
+    pied = ET.SubElement(transaction, "pied")
+    ET.SubElement(pied, "modepaiement").text = "TRANSFER"
+    ET.SubElement(pied, "mtport").text = get_info('mtport', '')
+    ET.SubElement(pied, "mtht").text = get_info('mtht', '')
+    ET.SubElement(pied, "remise").text = get_info('remise', '')
+    ET.SubElement(pied, "mttva").text = get_info('mttva', '')
+    ET.SubElement(pied, "mtttc").text = get_info('mtttc', '')
+
+    # Indenter l'élément XML
     indent_xml(transaction)
+
+    # Convertir en bytes
     tree = ET.ElementTree(transaction)
     xml_data = BytesIO()
     tree.write(xml_data, encoding="ISO-8859-1", xml_declaration=True)
@@ -84,6 +133,22 @@ tarif = load_file("Charger le fichier tarif (TXT)", "txt")
 
 if infos is not None and purchase is not None and stock is not None and tarif is not None:
     st.success("Fichiers chargés avec succès.")
+
+    # Nettoyage de la colonne 'Prix' pour éliminer les valeurs non valides
+    if 'Prix' in tarif.columns:
+        tarif = tarif[tarif['Prix'].str.contains(r'^\d', na=False)]
+        tarif['Prix'] = tarif['Prix'].str.replace(',', '.').astype(float)
+    else:
+        st.error("La colonne 'Prix' est absente du fichier tarif.txt.")
+
+    # Extraire les remises du fichier infos
+    remise_mapping = {
+        row['donnee'].split(': ')[1].strip(): float(row['valeur'])
+        for _, row in infos[infos['donnee'].str.contains('remise :', na=False)].iterrows()
+    }
+
+    # Récupérer l'identifiant depuis infos.xlsx
+    identifiant = infos.loc[infos['donnee'] == 'identifiant', 'valeur'].values[0] if 'identifiant' in infos['donnee'].values else 'INCONNU'
 
     # Vérifier les colonnes nécessaires
     if 'Product Number' not in purchase.columns or 'Référence Frn' not in stock.columns:
