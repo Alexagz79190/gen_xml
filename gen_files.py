@@ -45,13 +45,13 @@ def get_info(key, default=""):
 def create_ligne_xml(parent, index, row):
     ligne = ET.SubElement(parent, "ligne")
     ET.SubElement(ligne, "NumLigtransaction").text = f"{index:05d}"
-    ET.SubElement(ligne, "refagrizone").text = f"{identifiant} {row['Product Number']}"
-    ET.SubElement(ligne, "reffour").text = row['Product Number']
+    ET.SubElement(ligne, "refagrizone").text = f"{identifiant} {row['Vendor Product Number']}"
+    ET.SubElement(ligne, "reffour").text = row['Vendor Product Number']
     ET.SubElement(ligne, "libelle").text = row['Product Description']
     ET.SubElement(ligne, "qte").text = f"{row['Qty Pu']:.2f}"
 
     # Calcul du prix d'achat
-    tarif_row = tarif[tarif['Article'] == row['Product Number']]
+    tarif_row = tarif[tarif['Article'] == row['Vendor Product Number']]
     if not tarif_row.empty:
         prix = float(tarif_row['Prix'].values[0])
         remise_lettre = tarif_row['Remise'].values[0]
@@ -152,12 +152,12 @@ if infos is not None and purchase is not None and stock is not None and tarif is
     identifiant = infos.loc[infos['donnee'] == 'identifiant', 'valeur'].values[0] if 'identifiant' in infos['donnee'].values else 'INCONNU'
 
     # Vérifier les colonnes nécessaires
-    if 'Product Number' not in purchase.columns or 'Référence Frn' not in stock.columns:
-        st.error("Les colonnes nécessaires ('Product Number', 'Référence Frn') sont absentes des fichiers chargés.")
+    if 'Vendor Product Number' not in purchase.columns or 'Référence Frn' not in stock.columns:
+        st.error("Les colonnes nécessaires ('Vendor Product Number', 'Référence Frn') sont absentes des fichiers chargés.")
     else:
         # Diviser les données
-        agence_00 = purchase[purchase['Product Number'].isin(stock['Référence Frn'])]
-        agence_A1 = purchase[~purchase['Product Number'].isin(stock['Référence Frn'])]
+        agence_00 = purchase[purchase['Vendor Product Number'].isin(stock['Référence Frn'])]
+        agence_A1 = purchase[~purchase['Vendor Product Number'].isin(stock['Référence Frn'])]
 
         # Bouton pour générer les XML
         if st.button("Générer les fichiers XML"):
