@@ -72,8 +72,8 @@ def create_xml(data, agence, suffix):
 
     # En-tête de transaction
     entete = ET.SubElement(transaction, "entetetransaction")
-    ET.SubElement(entete, "numtransaction").text = f"{data.iloc[0]['Purchase Order']} {suffix}" if not data.empty else ""
-    ET.SubElement(entete, "passtransaction").text = f"{data.iloc[0]['Purchase Order']} {suffix}" if not data.empty else ""
+    ET.SubElement(entete, "numtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
+    ET.SubElement(entete, "passtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
     ET.SubElement(entete, "agence").text = agence
 
     # Informations de facturation
