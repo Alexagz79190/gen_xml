@@ -110,18 +110,25 @@ def create_xml(data, agence, suffix):
     ET.SubElement(pied, "mttva").text = get_info('mttva', '')
     ET.SubElement(pied, "mtttc").text = get_info('mtttc', '')
 
-        # Indenter l'élément XML
+    # Indenter l'élément XML
     indent_xml(transaction)
 
-    # Convertir en bytes
-    tree = ET.ElementTree(transaction)
-    xml_data = BytesIO()
-    
     # Choisir l'encodage : UTF-8 pour agence "00", ISO-8859-1 sinon
     encoding = "utf-8" if agence == "00" else "ISO-8859-1"
-    tree.write(xml_data, encoding=encoding, xml_declaration=True)
-    
-    return xml_data.getvalue()
+
+    # Convertir en bytes sans déclaration XML automatique
+    tree = ET.ElementTree(transaction)
+    xml_body = BytesIO()
+    tree.write(xml_body, encoding=encoding, xml_declaration=False)
+
+    # Construire l'entête manuellement avec la bonne casse et les bons guillemets
+    xml_declaration = f'<?xml version="1.0" encoding="{encoding.upper()}"?>\n'.encode(encoding)
+
+    # Combiner entête et corps XML
+    final_xml = xml_declaration + xml_body.getvalue()
+
+    return final_xml
+
 
 # Streamlit UI
 st.title("Générateur de fichiers XML")
