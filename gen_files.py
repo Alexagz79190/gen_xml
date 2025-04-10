@@ -110,13 +110,17 @@ def create_xml(data, agence, suffix):
     ET.SubElement(pied, "mttva").text = get_info('mttva', '')
     ET.SubElement(pied, "mtttc").text = get_info('mtttc', '')
 
-    # Indenter l'élément XML
+        # Indenter l'élément XML
     indent_xml(transaction)
 
     # Convertir en bytes
     tree = ET.ElementTree(transaction)
     xml_data = BytesIO()
-    tree.write(xml_data, encoding="ISO-8859-1", xml_declaration=True)
+    
+    # Choisir l'encodage : UTF-8 pour agence "00", ISO-8859-1 sinon
+    encoding = "utf-8" if agence == "00" else "ISO-8859-1"
+    tree.write(xml_data, encoding=encoding, xml_declaration=True)
+    
     return xml_data.getvalue()
 
 # Streamlit UI
