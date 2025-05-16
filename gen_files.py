@@ -82,23 +82,45 @@ def create_xml(data, agence_code, suffix):
     ET.SubElement(entete, "passtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
     ET.SubElement(entete, "agence").text = agence
 
+    if agence == "00":
+        ET.SubElement(entete, "code_edo").text = ""
+        ET.SubElement(entete, "nivcommande").text = "0"
+
     adrfact = ET.SubElement(entete, "adrfact")
     ET.SubElement(adrfact, "emailfact").text = ""
     ET.SubElement(adrfact, "nomfact").text = get_info('nomfact', 'Nom Facturation Inconnu')
     ET.SubElement(adrfact, "adr1fact").text = get_info('adr1fact', '')
+    if agence == "00":
+        ET.SubElement(adrfact, "adr2fact").text = ""
+        ET.SubElement(adrfact, "adr3fact").text = ""
+        ET.SubElement(adrfact, "telephonefact").text = ""
+        ET.SubElement(adrfact, "numtva").text = ""
+        ET.SubElement(adrfact, "numsiret").text = ""
     ET.SubElement(adrfact, "paysfact").text = get_info('paysfact', '')
     ET.SubElement(adrfact, "villefact").text = get_info('villefact', '')
     ET.SubElement(adrfact, "cpfact").text = get_info('cpfact', '')
     ET.SubElement(adrfact, "code_client").text = get_info('code_client', '')
 
     adrlivr = ET.SubElement(entete, "adrlivr")
+    if agence == "00":
+        ET.SubElement(adrlivr, "typadrlivr").text = "CL"
+        ET.SubElement(adrlivr, "nominterloclivr").text = get_info('nomadrlivr', '')
     ET.SubElement(adrlivr, "emaillivr").text = get_info('emaillivr', '')
     ET.SubElement(adrlivr, "nomadrlivr").text = get_info('nomadrlivr', '')
     ET.SubElement(adrlivr, "adr1livr").text = get_info('adr1livr', '')
     ET.SubElement(adrlivr, "adr2livr").text = get_info('adr2livr', '')
+    if agence == "00":
+        ET.SubElement(adrlivr, "adr3livr").text = ""
+        ET.SubElement(adrlivr, "telephonelivr").text = ""
     ET.SubElement(adrlivr, "payslivr").text = get_info('payslivr', '')
     ET.SubElement(adrlivr, "villelivr").text = get_info('villelivr', '')
     ET.SubElement(adrlivr, "cplivr").text = get_info('cplivr', '')
+
+    if agence == "00":
+        livr = ET.SubElement(entete, "livr")
+        for tag in ["trans", "mode", "idrelai", "departlivr", "delailivr", "infolivr"]:
+            ET.SubElement(livr, tag).text = ""
+        ET.SubElement(entete, "tauxwtva").text = "20"
 
     lignes = ET.SubElement(transaction, "lignes")
     for index, row in data.iterrows():
@@ -106,11 +128,11 @@ def create_xml(data, agence_code, suffix):
 
     pied = ET.SubElement(transaction, "pied")
     ET.SubElement(pied, "modepaiement").text = "TRANSFER"
-    ET.SubElement(pied, "mtport").text = get_info('mtport', '')
-    ET.SubElement(pied, "mtht").text = get_info('mtht', '')
-    ET.SubElement(pied, "remise").text = get_info('remise', '')
-    ET.SubElement(pied, "mttva").text = get_info('mttva', '')
-    ET.SubElement(pied, "mtttc").text = get_info('mtttc', '')
+    for tag in ["mtport", "mtht", "remise", "mttva", "mtttc"]:
+        ET.SubElement(pied, tag).text = get_info(tag, "")
+    if agence == "00":
+        for tag in ["numtvacee", "domiciliation", "rib", "iban", "bic"]:
+            ET.SubElement(pied, tag).text = ""
 
     indent_xml(transaction)
 
