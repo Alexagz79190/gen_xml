@@ -2,6 +2,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import streamlit as st
 from io import BytesIO
+import re
 
 # Fonction pour charger les fichiers via Streamlit
 def load_file(label, file_type, header=None):
@@ -72,6 +73,8 @@ def create_ligne_xml(parent, index, row):
     ET.SubElement(ligne, "departlivr").text = ""
 
 # Fonction pour créer un fichier XML
+# ... (tout le début inchangé)
+
 def create_xml(data, agence_code, suffix):
     global agence
     agence = agence_code
@@ -87,7 +90,7 @@ def create_xml(data, agence_code, suffix):
         ET.SubElement(entete, "nivcommande").text = "0"
 
     adrfact = ET.SubElement(entete, "adrfact")
-    ET.SubElement(adrfact, "emailfact").text = ""
+    ET.SubElement(adrfact, "emailfact").text = "vendor.invoices@kramp.com" if agence == "00" else ""
     ET.SubElement(adrfact, "nomfact").text = get_info('nomfact', 'Nom Facturation Inconnu')
     ET.SubElement(adrfact, "adr1fact").text = get_info('adr1fact', '')
     if agence == "00":
@@ -105,7 +108,7 @@ def create_xml(data, agence_code, suffix):
     if agence == "00":
         ET.SubElement(adrlivr, "typadrlivr").text = "CL"
         ET.SubElement(adrlivr, "nominterloclivr").text = get_info('nomadrlivr', '')
-    ET.SubElement(adrlivr, "emaillivr").text = get_info('emaillivr', '')
+    ET.SubElement(adrlivr, "emaillivr").text = "vendor.invoices@kramp.com" if agence == "00" else get_info('emaillivr', '')
     ET.SubElement(adrlivr, "nomadrlivr").text = get_info('nomadrlivr', '')
     ET.SubElement(adrlivr, "adr1livr").text = get_info('adr1livr', '')
     ET.SubElement(adrlivr, "adr2livr").text = get_info('adr2livr', '')
@@ -141,9 +144,12 @@ def create_xml(data, agence_code, suffix):
     xml_body = BytesIO()
     tree.write(xml_body, encoding=encoding, xml_declaration=False)
     xml_declaration = f'<?xml version="1.0" encoding="{encoding.upper()}"?>\n'.encode(encoding)
-    final_xml = xml_declaration + xml_body.getvalue()
-
-    return final_xml
+    xml_string = xml_body.getvalue().decode(encoding)
+    # Correction ERP strict : remplacer toutes les balises auto-fermées par balises vides ouvertes/fermées
+    xml_string = re.sub(r"<(\w+)(\s*)/>", r"<\1></\1>", xml_string)
+    # Ajout de l'en-tête en UTF-8 strict
+    final_xml = xml_declaration + xml_string.encode(encoding)
+    return final_xml    
 
 # Streamlit UI
 st.title("Générateur de fichiers XML")
