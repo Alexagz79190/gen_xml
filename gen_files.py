@@ -195,21 +195,21 @@ if infos is not None and purchase is not None and stock is not None and tarif is
 
 
     if "xml_00" in st.session_state and "xml_A1" in st.session_state:
-    st.header("Téléchargement des fichiers")
-    file_name_00 = f"IN_TRANS_{st.session_state['numtransaction_00']}.xml" if st.session_state.get("numtransaction_00") else "agence_00.xml"
-    st.download_button(
-        "Télécharger agence_00.xml",
-        data=st.session_state["xml_00"],
-        file_name=file_name_00,
-        mime="application/xml"
-    )
-    file_name_A1 = f"agence_A1.xml"  # à adapter si tu veux aussi personnaliser ce nom-là
-    st.download_button(
-        "Télécharger agence_A1.xml",
-        data=st.session_state["xml_A1"],
-        file_name=file_name_A1,
-        mime="application/xml"
-    )
+        st.header("Téléchargement des fichiers")
+        file_name_00 = f"IN_TRANS_{st.session_state['numtransaction_00']}.xml" if st.session_state.get("numtransaction_00") else "agence_00.xml"
+        st.download_button(
+            "Télécharger agence_00.xml",
+            data=st.session_state["xml_00"],
+            file_name=file_name_00,
+            mime="application/xml"
+        )
+        file_name_A1 = f"agence_A1.xml"  # à adapter si tu veux aussi personnaliser ce nom-là
+        st.download_button(
+            "Télécharger agence_A1.xml",
+            data=st.session_state["xml_A1"],
+            file_name=file_name_A1,
+            mime="application/xml"
+        )
 
 else:
     st.warning("Veuillez charger tous les fichiers nécessaires.")
