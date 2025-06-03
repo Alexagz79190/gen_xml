@@ -81,6 +81,7 @@ def create_xml(data, agence_code, suffix):
 
     entete = ET.SubElement(transaction, "entetetransaction")
     numtransaction = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
+    ET.SubElement(entete, "numtransaction").text = numtransaction
     ET.SubElement(entete, "passtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
     ET.SubElement(entete, "agence").text = agence
 
@@ -148,7 +149,7 @@ def create_xml(data, agence_code, suffix):
     xml_string = re.sub(r"<(\w+)(\s*)/>", r"<\1></\1>", xml_string)
     # Ajout de l'en-tête en UTF-8 strict
     final_xml = xml_declaration + xml_string.encode(encoding)
-    return final_xml    
+    return final_xml, numtransaction   
 
 # Streamlit UI
 st.title("Générateur de fichiers XML")
