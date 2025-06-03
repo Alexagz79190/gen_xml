@@ -73,7 +73,6 @@ def create_ligne_xml(parent, index, row):
     ET.SubElement(ligne, "departlivr").text = ""
 
 # Fonction pour créer un fichier XML
-# ... (tout le début inchangé)
 
 def create_xml(data, agence_code, suffix):
     global agence
@@ -81,7 +80,7 @@ def create_xml(data, agence_code, suffix):
     transaction = ET.Element("transaction")
 
     entete = ET.SubElement(transaction, "entetetransaction")
-    ET.SubElement(entete, "numtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
+    numtransaction = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
     ET.SubElement(entete, "passtransaction").text = f"{data.iloc[0]['Purchase Order']}{suffix}" if not data.empty else ""
     ET.SubElement(entete, "agence").text = agence
 
@@ -186,13 +185,31 @@ if infos is not None and purchase is not None and stock is not None and tarif is
         agence_A1 = purchase[~purchase['Vendor Product Number'].isin(stock['Référence Frn'])]
 
         if st.button("Générer les fichiers XML"):
-            st.session_state["xml_00"] = create_xml(agence_00, "00", "KUH1")
-            st.session_state["xml_A1"] = create_xml(agence_A1, "A1", "KUH2")
+            xml_00, numtransaction_00 = create_xml(agence_00, "00", "KUH1")
+            xml_A1, numtransaction_A1 = create_xml(agence_A1, "A1", "KUH2")
+            st.session_state["xml_00"] = xml_00
+            st.session_state["numtransaction_00"] = numtransaction_00
+            st.session_state["xml_A1"] = xml_A1
+            st.session_state["numtransaction_A1"] = numtransaction_A1
             st.success("Les fichiers XML ont été générés avec succès.")
 
+
     if "xml_00" in st.session_state and "xml_A1" in st.session_state:
-        st.header("Téléchargement des fichiers")
-        st.download_button("Télécharger agence_00.xml", data=st.session_state["xml_00"], file_name="agence_00.xml", mime="application/xml")
-        st.download_button("Télécharger agence_A1.xml", data=st.session_state["xml_A1"], file_name="agence_A1.xml", mime="application/xml")
+    st.header("Téléchargement des fichiers")
+    file_name_00 = f"IN_TRANS_{st.session_state['numtransaction_00']}.xml" if st.session_state.get("numtransaction_00") else "agence_00.xml"
+    st.download_button(
+        "Télécharger agence_00.xml",
+        data=st.session_state["xml_00"],
+        file_name=file_name_00,
+        mime="application/xml"
+    )
+    file_name_A1 = f"agence_A1.xml"  # à adapter si tu veux aussi personnaliser ce nom-là
+    st.download_button(
+        "Télécharger agence_A1.xml",
+        data=st.session_state["xml_A1"],
+        file_name=file_name_A1,
+        mime="application/xml"
+    )
+
 else:
     st.warning("Veuillez charger tous les fichiers nécessaires.")
