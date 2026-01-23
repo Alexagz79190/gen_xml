@@ -21,6 +21,36 @@ def load_file(label, file_type, header=None):
             return pd.read_fwf(uploaded_file, colspecs=colspecs, names=columns, encoding='latin1')
     return None
 
+# Fonction pour trouver l'entête du fichier purchase order
+def load_purchase_autodetect(uploaded_file, start_row=21, col_index=6):
+    # Lecture brute sans header
+    df_raw = pd.read_excel(uploaded_file, header=None)
+
+    header_row = None
+    for i in range(start_row, len(df_raw)):
+        cell_value = str(df_raw.iloc[i, col_index]).strip()
+        if cell_value == "Vendor Product Number":
+            header_row = i
+            break
+
+    if header_row is None:
+        st.error("Impossible de trouver 'Vendor Product Number' dans la colonne G.")
+        return None
+
+    # Relecture avec le bon header
+    df = pd.read_excel(uploaded_file, header=header_row)
+
+    # Nettoyage des noms de colonnes
+    df.columns = (
+        df.columns.astype(str)
+        .str.replace("\ufeff", "", regex=False)
+        .str.strip()
+    )
+
+    st.success(f"En-tête détectée automatiquement à la ligne {header_row + 1}")
+    return df
+
+
 # Fonction pour indenter l'XML pour une meilleure lisibilité
 def indent_xml(elem, level=0):
     i = "\n" + level * "  "
@@ -159,7 +189,14 @@ if infos is not None:
     if 'donnee' not in infos.columns or 'valeur' not in infos.columns:
         st.error("Les colonnes 'donnee' et 'valeur' sont absentes du fichier infos.")
         infos = None
-purchase = load_file("Charger le fichier purchase (XLSX)", "xlsx", header=22)
+uploaded_purchase = st.file_uploader("Charger le fichier purchase (XLSX)", type="xlsx")
+purchase = None
+if uploaded_purchase is not None:
+    purchase = load_purchase_autodetect(uploaded_purchase)
+
+if purchase is not None:
+    st.write("Colonnes purchase détectées :", list(purchase.columns))
+
 stock = load_file("Charger le fichier stock (CSV)", "csv")
 tarif = load_file("Charger le fichier tarif (TXT)", "txt")
 
