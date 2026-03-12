@@ -24,7 +24,7 @@ FORMAT_SPECS = {
         "quantite":       "Qty Pu",
         "valeur_ligne":   "Pu Value",
         "prix_unitaire":  None,
-        "discount1":      None,
+        "discount1":      "Disc1",   # colonne la plus courante dans le Format A — mappable manuellement
     },
     "Format B – Nouveau (Purchase Row Quantity)": {
         "purchase_order": "Po Number",
@@ -321,6 +321,13 @@ if infos is not None:
 uploaded_purchase = st.file_uploader("Charger le fichier purchase (XLSX)", type="xlsx")
 purchase = None
 
+# Réinitialiser le mapping sauvegardé si on change de fichier
+if uploaded_purchase is not None:
+    file_id = uploaded_purchase.name + str(uploaded_purchase.size)
+    if st.session_state.get("_purchase_file_id") != file_id:
+        st.session_state.pop("saved_mapping", None)
+        st.session_state["_purchase_file_id"] = file_id
+
 if uploaded_purchase is not None:
     purchase_raw, fmt_detecte = load_purchase_autodetect(uploaded_purchase)
 
@@ -329,26 +336,38 @@ if uploaded_purchase is not None:
         spec_auto = FORMAT_SPECS[fmt_detecte]
 
         with st.expander("🔍 Voir / modifier le mapping détecté", expanded=False):
-            st.caption("Le mapping a été appliqué automatiquement. Modifiez-le si une colonne est incorrecte.")
-            mapping = show_mapping_ui(purchase_raw, spec_auto=spec_auto)
+            st.caption("Modifiez le mapping si une colonne est incorrecte, puis cliquez sur **Enregistrer**.")
+            mapping_ui = show_mapping_ui(purchase_raw, spec_auto=spec_auto)
+            if mapping_ui and st.button("💾 Enregistrer le mapping", key="btn_save_mapping"):
+                st.session_state["saved_mapping"] = mapping_ui
+                st.success("Mapping enregistré ✔")
 
-        # Si l'expander n'est pas ouvert, on applique le spec auto directement
-        if mapping is None:
-            mapping = spec_auto
+        # Priorité : mapping sauvegardé > spec auto
+        mapping = st.session_state.get("saved_mapping", spec_auto)
 
     else:
         st.warning("⚠️ Format non reconnu. Veuillez mapper les colonnes manuellement.")
         st.markdown("### 🔧 Mapping des colonnes")
-        st.caption("Associez chaque champ nécessaire à la colonne correspondante dans votre fichier.")
-        mapping = show_mapping_ui(purchase_raw, spec_auto=None)
+        st.caption("Associez chaque champ, puis cliquez sur **Enregistrer** pour valider.")
+        mapping_ui = show_mapping_ui(purchase_raw, spec_auto=None)
+        if mapping_ui and st.button("💾 Enregistrer le mapping", key="btn_save_mapping"):
+            st.session_state["saved_mapping"] = mapping_ui
+            st.success("Mapping enregistré ✔")
+
+        mapping = st.session_state.get("saved_mapping")
 
     if mapping:
-        purchase = normalize_purchase(purchase_raw, mapping)
-        st.info(f"📋 {len(purchase)} lignes chargées — aperçu :")
-        st.dataframe(
-            purchase[["_purchase_order","_vendor_ref","_description","_quantite","_prix_unitaire","_discount1","_prixvente"]].head(5),
-            use_container_width=True
-        )
+        # Vérifier que les colonnes mappées existent bien dans le fichier chargé
+        missing = [v for v in mapping.values() if v and v not in purchase_raw.columns]
+        if missing:
+            st.error(f"⚠️ Colonnes introuvables dans le fichier : {missing}. Vérifiez le mapping.")
+        else:
+            purchase = normalize_purchase(purchase_raw, mapping)
+            st.info(f"📋 {len(purchase)} lignes chargées — aperçu :")
+            st.dataframe(
+                purchase[["_purchase_order","_vendor_ref","_description","_quantite","_prix_unitaire","_discount1","_prixvente"]].head(5),
+                use_container_width=True
+            )
 
 # --- Autres fichiers ---
 stock = load_file("Charger le fichier stock (CSV)", "csv")
