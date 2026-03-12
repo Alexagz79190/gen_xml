@@ -24,6 +24,7 @@ FORMAT_SPECS = {
         "quantite":       "Qty Pu",
         "valeur_ligne":   "Pu Value",
         "prix_unitaire":  None,
+        "discount1":      None,
     },
     "Format B – Nouveau (Purchase Row Quantity)": {
         "purchase_order": "Po Number",
@@ -32,6 +33,7 @@ FORMAT_SPECS = {
         "quantite":       "Purchase Row Quantity",
         "valeur_ligne":   "Purchase Row Value Euro",
         "prix_unitaire":  "Gross Value Per Unit",
+        "discount1":      "Discount 1",
     },
 }
 
@@ -48,6 +50,7 @@ CHAMPS_INTERNES = {
     "quantite":       "Quantité commandée (quantite)",
     "prix_unitaire":  "Prix unitaire HT (prix_unitaire)  — laisser vide si calculé",
     "valeur_ligne":   "Valeur totale ligne HT (valeur_ligne) — utilisée si prix_unitaire vide",
+    "discount1":      "Remise ligne % (discount1) — format -35 pour 35% — laisser vide si absent",
 }
 
 
@@ -137,6 +140,11 @@ def show_mapping_ui(df, spec_auto=None, expanded=False):
 # ==================== NORMALISATION ====================
 def normalize_purchase(df, spec):
     df = df.copy()
+
+    # ── Filtrer les lignes sans référence fournisseur (ex : ligne de total) ──
+    vendor_col = spec["vendor_ref"]
+    df = df[df[vendor_col].notna() & (df[vendor_col].astype(str).str.strip() != "") & (df[vendor_col].astype(str).str.strip() != "nan")]
+
     df["_purchase_order"] = df[spec["purchase_order"]].astype(str)
     df["_vendor_ref"]     = df[spec["vendor_ref"]].astype(str).str.strip()
     df["_description"]    = df[spec["description"]].astype(str)
@@ -150,7 +158,18 @@ def normalize_purchase(df, spec):
     else:
         df["_prix_unitaire"] = 0.0
 
-    return df
+    # ── Remise ligne (Discount 1) : format -35 → taux 0.35 ──
+    if spec.get("discount1") and spec["discount1"] in df.columns:
+        raw_discount = pd.to_numeric(df[spec["discount1"]], errors="coerce").fillna(0)
+        # La valeur est négative (ex : -35), on prend la valeur absolue pour le taux
+        df["_discount1"] = raw_discount.abs() / 100
+    else:
+        df["_discount1"] = 0.0
+
+    # ── Prix de vente HT = prix unitaire * (1 - remise) arrondi à 2 décimales ──
+    df["_prixvente"] = (df["_prix_unitaire"] * (1 - df["_discount1"])).round(2)
+
+    return df.reset_index(drop=True)
 
 
 # ==================== UTILITAIRES ====================
@@ -210,7 +229,8 @@ def create_ligne_xml(parent, index, row):
         prixachat = 0.00
 
     ET.SubElement(ligne, "prixachat").text    = f"{prixachat:.2f}"
-    ET.SubElement(ligne, "prixventeHT").text  = f"{row['_prix_unitaire']:.2f}"
+    # Prix de vente HT = Gross Value Per Unit * ((100 - abs(Discount 1)) / 100)
+    ET.SubElement(ligne, "prixventeHT").text  = f"{row['_prixvente']:.2f}"
     ET.SubElement(ligne, "prixventeTTC").text = "0.00"
     if agence == "00":
         ET.SubElement(ligne, "codefour").text = "408"
@@ -326,7 +346,7 @@ if uploaded_purchase is not None:
         purchase = normalize_purchase(purchase_raw, mapping)
         st.info(f"📋 {len(purchase)} lignes chargées — aperçu :")
         st.dataframe(
-            purchase[["_purchase_order","_vendor_ref","_description","_quantite","_prix_unitaire"]].head(5),
+            purchase[["_purchase_order","_vendor_ref","_description","_quantite","_prix_unitaire","_discount1","_prixvente"]].head(5),
             use_container_width=True
         )
 
