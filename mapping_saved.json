@@ -1,1 +1,9 @@
-{}
+{
+  "purchase_order": "Purchase Order",
+  "vendor_ref": "Vendor Product Number",
+  "description": "Product Description",
+  "quantite": "Qty Pu",
+  "prix_unitaire": null,
+  "valeur_ligne": "Pu Value",
+  "discount1": null
+}
