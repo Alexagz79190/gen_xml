@@ -12,6 +12,129 @@ import xml.etree.ElementTree as ET
 import streamlit as st
 from io import BytesIO
 import re
+import json
+import base64
+from pathlib import Path
+
+# ==================== PERSISTANCE MAPPING (GitHub API) ====================
+# Configurer dans .streamlit/secrets.toml :
+#
+#   [github]
+#   token  = "ghp_xxxxxxxxxxxxxxxxxxxx"   # Personal Access Token (scope: repo)
+#   repo   = "votre-org/votre-repo"        # ex: "monuser/xml-generator"
+#   path   = "mapping_saved.json"          # chemin du fichier dans le repo
+#   branch = "main"                        # branche cible (optionnel, défaut: main)
+#
+# En local sans secrets → fallback sur fichier JSON local.
+
+MAPPING_FILE_LOCAL = Path(__file__).parent / "mapping_saved.json"
+
+def _github_cfg():
+    """Retourne la config GitHub depuis st.secrets, ou None si absente."""
+    try:
+        cfg = st.secrets.get("github", {})
+        if cfg.get("token") and cfg.get("repo") and cfg.get("path"):
+            return cfg
+    except Exception:
+        pass
+    return None
+
+def _github_headers(cfg):
+    return {
+        "Authorization": f"token {cfg['token']}",
+        "Accept": "application/vnd.github+json",
+    }
+
+def _github_api_url(cfg):
+    branch = cfg.get("branch", "main")
+    return (
+        f"https://api.github.com/repos/{cfg['repo']}/contents/{cfg['path']}",
+        branch,
+    )
+
+def load_mapping_from_disk():
+    """
+    Charge le mapping :
+    1. Depuis GitHub si secrets configurés
+    2. Sinon depuis le fichier JSON local (dev)
+    """
+    import requests
+
+    cfg = _github_cfg()
+    if cfg:
+        url, branch = _github_api_url(cfg)
+        try:
+            r = requests.get(url, headers=_github_headers(cfg),
+                             params={"ref": branch}, timeout=10)
+            if r.status_code == 200:
+                content = r.json().get("content", "")
+                return json.loads(base64.b64decode(content).decode("utf-8"))
+        except Exception:
+            pass
+        return None
+
+    # Fallback local
+    try:
+        if MAPPING_FILE_LOCAL.exists():
+            return json.loads(MAPPING_FILE_LOCAL.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return None
+
+def save_mapping_to_disk(mapping: dict):
+    """
+    Sauvegarde le mapping :
+    1. Via GitHub API (commit) si secrets configurés
+    2. Sinon dans le fichier JSON local (dev)
+    """
+    import requests
+
+    cfg = _github_cfg()
+    if cfg:
+        url, branch = _github_api_url(cfg)
+        headers = _github_headers(cfg)
+        content_b64 = base64.b64encode(
+            json.dumps(mapping, ensure_ascii=False, indent=2).encode("utf-8")
+        ).decode("utf-8")
+
+        # Récupérer le SHA du fichier existant (requis pour mettre à jour)
+        sha = None
+        try:
+            r = requests.get(url, headers=headers,
+                             params={"ref": branch}, timeout=10)
+            if r.status_code == 200:
+                sha = r.json().get("sha")
+        except Exception:
+            pass
+
+        payload = {
+            "message": "chore: mise à jour mapping colonnes purchase",
+            "content": content_b64,
+            "branch":  branch,
+        }
+        if sha:
+            payload["sha"] = sha
+
+        try:
+            r = requests.put(url, headers=headers,
+                             json=payload, timeout=15)
+            if r.status_code in (200, 201):
+                return True
+            st.error(f"GitHub API erreur {r.status_code} : {r.json().get('message', r.text)}")
+        except Exception as e:
+            st.error(f"Impossible de contacter GitHub : {e}")
+        return False
+
+    # Fallback local
+    try:
+        MAPPING_FILE_LOCAL.write_text(
+            json.dumps(mapping, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return True
+    except Exception as e:
+        st.error(f"Impossible d'écrire le fichier de mapping : {e}")
+        return False
+
 
 # ==================== MAPPING DES FORMATS CONNUS ====================
 # Chaque format mappe les colonnes du fichier fournisseur vers les champs internes.
@@ -24,7 +147,7 @@ FORMAT_SPECS = {
         "quantite":       "Qty Pu",
         "valeur_ligne":   "Pu Value",
         "prix_unitaire":  None,
-        "discount1":  None,   
+        "discount1":      "Disc1",   # colonne la plus courante dans le Format A — mappable manuellement
     },
     "Format B – Nouveau (Purchase Row Quantity)": {
         "purchase_order": "Po Number",
@@ -321,12 +444,24 @@ if infos is not None:
 uploaded_purchase = st.file_uploader("Charger le fichier purchase (XLSX)", type="xlsx")
 purchase = None
 
-# Réinitialiser le mapping sauvegardé si on change de fichier
-if uploaded_purchase is not None:
-    file_id = uploaded_purchase.name + str(uploaded_purchase.size)
-    if st.session_state.get("_purchase_file_id") != file_id:
-        st.session_state.pop("saved_mapping", None)
-        st.session_state["_purchase_file_id"] = file_id
+# Charger le mapping persisté dans session_state au premier run
+if "saved_mapping" not in st.session_state:
+    disk_mapping = load_mapping_from_disk()
+    if disk_mapping:
+        st.session_state["saved_mapping"] = disk_mapping
+
+# Label du bouton selon le backend disponible
+_use_github   = bool(_github_cfg())
+_save_label   = "💾 Enregistrer (GitHub)" if _use_github else "💾 Enregistrer (local)"
+_save_caption = "GitHub" if _use_github else "fichier local `mapping_saved.json`"
+
+def _do_reset():
+    st.session_state.pop("saved_mapping", None)
+    if not _use_github:
+        if MAPPING_FILE_LOCAL.exists():
+            MAPPING_FILE_LOCAL.unlink()
+    # Pour GitHub : on pourrait supprimer le fichier via API,
+    # mais laisser un fichier vide est suffisant — on efface juste la session.
 
 if uploaded_purchase is not None:
     purchase_raw, fmt_detecte = load_purchase_autodetect(uploaded_purchase)
@@ -336,31 +471,45 @@ if uploaded_purchase is not None:
         spec_auto = FORMAT_SPECS[fmt_detecte]
 
         with st.expander("🔍 Voir / modifier le mapping détecté", expanded=False):
-            st.caption("Modifiez le mapping si une colonne est incorrecte, puis cliquez sur **Enregistrer**.")
-            mapping_ui = show_mapping_ui(purchase_raw, spec_auto=spec_auto)
-            if mapping_ui and st.button("💾 Enregistrer le mapping", key="btn_save_mapping"):
-                st.session_state["saved_mapping"] = mapping_ui
-                st.success("Mapping enregistré ✔")
+            st.caption(f"Modifiez le mapping si nécessaire, puis cliquez sur **{_save_label}** — sauvegardé dans {_save_caption}.")
+            prefill    = st.session_state.get("saved_mapping", spec_auto)
+            mapping_ui = show_mapping_ui(purchase_raw, spec_auto=prefill)
+            col_save, col_reset = st.columns([1, 1])
+            with col_save:
+                if mapping_ui and st.button(_save_label, key="btn_save_mapping"):
+                    if save_mapping_to_disk(mapping_ui):
+                        st.session_state["saved_mapping"] = mapping_ui
+                        st.success(f"Mapping enregistré dans {_save_caption} ✔")
+            with col_reset:
+                if st.button("🗑️ Réinitialiser", key="btn_reset_mapping"):
+                    _do_reset()
+                    st.info("Mapping réinitialisé.")
 
-        # Priorité : mapping sauvegardé > spec auto
         mapping = st.session_state.get("saved_mapping", spec_auto)
 
     else:
         st.warning("⚠️ Format non reconnu. Veuillez mapper les colonnes manuellement.")
         st.markdown("### 🔧 Mapping des colonnes")
-        st.caption("Associez chaque champ, puis cliquez sur **Enregistrer** pour valider.")
-        mapping_ui = show_mapping_ui(purchase_raw, spec_auto=None)
-        if mapping_ui and st.button("💾 Enregistrer le mapping", key="btn_save_mapping"):
-            st.session_state["saved_mapping"] = mapping_ui
-            st.success("Mapping enregistré ✔")
+        st.caption(f"Associez chaque champ, puis cliquez sur **{_save_label}** — sauvegardé dans {_save_caption}.")
+        prefill    = st.session_state.get("saved_mapping", None)
+        mapping_ui = show_mapping_ui(purchase_raw, spec_auto=prefill)
+        col_save, col_reset = st.columns([1, 1])
+        with col_save:
+            if mapping_ui and st.button(_save_label, key="btn_save_mapping"):
+                if save_mapping_to_disk(mapping_ui):
+                    st.session_state["saved_mapping"] = mapping_ui
+                    st.success(f"Mapping enregistré dans {_save_caption} ✔")
+        with col_reset:
+            if st.button("🗑️ Réinitialiser", key="btn_reset_mapping"):
+                _do_reset()
+                st.info("Mapping réinitialisé.")
 
         mapping = st.session_state.get("saved_mapping")
 
     if mapping:
-        # Vérifier que les colonnes mappées existent bien dans le fichier chargé
         missing = [v for v in mapping.values() if v and v not in purchase_raw.columns]
         if missing:
-            st.error(f"⚠️ Colonnes introuvables dans le fichier : {missing}. Vérifiez le mapping.")
+            st.warning(f"⚠️ Colonnes du mapping introuvables dans ce fichier : {missing}. Vérifiez ou modifiez le mapping.")
         else:
             purchase = normalize_purchase(purchase_raw, mapping)
             st.info(f"📋 {len(purchase)} lignes chargées — aperçu :")
