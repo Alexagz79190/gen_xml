@@ -24,7 +24,7 @@ FORMAT_SPECS = {
         "quantite":       "Qty Pu",
         "valeur_ligne":   "Pu Value",
         "prix_unitaire":  None,
-        "discount1":      "Disc1",   # colonne la plus courante dans le Format A — mappable manuellement
+        "discount1":  None,   
     },
     "Format B – Nouveau (Purchase Row Quantity)": {
         "purchase_order": "Po Number",
