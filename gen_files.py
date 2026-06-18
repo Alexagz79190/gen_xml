@@ -16,6 +16,12 @@ import json
 import base64
 from pathlib import Path
 
+from theme import apply_theme, page_header
+
+# set_page_config doit être la 1re commande Streamlit exécutée
+st.set_page_config(page_title="Générateur XML — Agrizone", page_icon="🧾", layout="wide")
+apply_theme()
+
 # ==================== PERSISTANCE MAPPING (GitHub API) ====================
 # Configurer dans .streamlit/secrets.toml :
 #
@@ -431,7 +437,11 @@ def create_xml(data, agence_code, suffix):
 
 
 # ==================== INTERFACE STREAMLIT ====================
-st.title("Générateur de fichiers XML")
+page_header(
+    "Générateur de fichiers XML",
+    "Commandes fournisseur — détection automatique du format & mapping des colonnes",
+    "🧾",
+)
 
 # --- Fichier infos ---
 infos = load_file("Charger le fichier infos (XLSX)", "xlsx", header=0)
